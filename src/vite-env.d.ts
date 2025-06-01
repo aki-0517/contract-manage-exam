@@ -2,7 +2,8 @@
 
 interface ImportMetaEnv {
   readonly VITE_MORALIS_API_KEY: string
-  // 他の環境変数も必要に応じて追加
+  readonly VITE_PRIVY_APP_ID: string
+  // Add other environment variables as needed
 }
 
 interface ImportMeta {

@@ -1,15 +1,9 @@
 import { useState, useEffect } from "react";
 import WalletConnectButton from "./components/WalletConnectButton";
-import NetworkSelector from "./components/NetworkSelector";
 import './App.css'
-import '@rainbow-me/rainbowkit/styles.css';
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useAccount, useChainId } from 'wagmi';
+import { usePrivy } from '@privy-io/react-auth';
 import DefiPositions from "./components/DefiPositions";
-import { mainnet, sepolia, base, baseSepolia } from 'wagmi/chains';
-
-const queryClient = new QueryClient();
+import { mainnet, sepolia, base, baseSepolia } from 'viem/chains';
 
 const PROTOCOLS = [
   { id: "uniswap-v2", name: "Uniswap V2" },
@@ -30,18 +24,16 @@ const PROTOCOLS = [
 function App() {
   const [inputAddress, setInputAddress] = useState<string>("");
   const [searchedAddress, setSearchedAddress] = useState<string | null>(null);
-  const { address: connectedAddress } = useAccount();
-  const chainId = useChainId();
+  const { ready, user } = usePrivy();
   const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (connectedAddress) {
-      setInputAddress(connectedAddress);
-      setSearchedAddress(connectedAddress);
+    if (user?.wallet?.address) {
+      setInputAddress(user.wallet.address);
     }
-  }, [connectedAddress]);
+  }, [user?.wallet?.address]);
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -52,8 +44,8 @@ function App() {
   const handleSearch = () => {
     if (inputAddress.trim() !== "") {
       setSearchedAddress(inputAddress.trim());
-    } else if (connectedAddress) {
-      setSearchedAddress(connectedAddress);
+    } else if (user?.wallet?.address) {
+      setSearchedAddress(user.wallet.address);
     } else {
       setSearchedAddress("");
     }
@@ -61,7 +53,7 @@ function App() {
 
   useEffect(() => {
     const fetchPositions = async () => {
-      if (!searchedAddress || !chainId) return;
+      if (!searchedAddress || !ready) return;
       setLoading(true);
       setError(null);
       setPositions([]);
@@ -90,7 +82,7 @@ function App() {
       try {
         const results = await Promise.all(
           PROTOCOLS.map(async (protocol) => {
-            const url = `https://deep-index.moralis.io/api/v2.2/wallets/${searchedAddress}/defi/${protocol.id}/positions?chain=${getNetworkName(chainId)}`;
+            const url = `https://deep-index.moralis.io/api/v2.2/wallets/${searchedAddress}/defi/${protocol.id}/positions?chain=${getNetworkName(mainnet.id)}`;
             const res = await fetch(url, {
               headers: {
                 'accept': 'application/json',
@@ -114,46 +106,50 @@ function App() {
     if (searchedAddress) {
       fetchPositions();
     }
-  }, [searchedAddress, chainId]);
+  }, [searchedAddress, ready]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <RainbowKitProvider modalSize="compact">
-        <div className="app-container" style={{ maxWidth: 600, margin: '0 auto', padding: 24, position: 'relative' }}>
-          <div style={{ position: 'absolute', top: 24, right: 24 }}>
-            <WalletConnectButton />
-          </div>
-          <header style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
-            <h1 style={{ fontSize: 24 }}>Defi Manage</h1>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              <NetworkSelector />
-              <input
-                type="text"
-                placeholder="Input wallet address"
-                value={inputAddress}
-                onChange={e => setInputAddress(e.target.value)}
-                onKeyDown={handleInputKeyDown}
-                style={{ padding: 8, borderRadius: 4, border: '1px solid #ccc', minWidth: 320 }}
-              />
-              <button
-                onClick={handleSearch}
-                style={{ padding: 8, borderRadius: 4, border: '1px solid #ccc', background: '#f9f9f9', cursor: 'pointer' }}
-              >
-                Search
-              </button>
-            </div>
-          </header>
-          <div style={{ marginTop: 24, minHeight: 32 }}>
-            <DefiPositions
-              positions={positions}
-              loading={loading}
-              error={error}
-              searchedAddress={searchedAddress}
-            />
-          </div>
+    <div className="app-container" style={{ maxWidth: 600, margin: '0 auto', padding: 24, position: 'relative' }}>
+      <div style={{ position: 'absolute', top: 24, right: 24 }}>
+        <WalletConnectButton />
+      </div>
+      <header style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
+        <h1 style={{ fontSize: 24 }}>Defi Manage</h1>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 16 }}>
+          <input
+            type="text"
+            placeholder="Input wallet address"
+            value={inputAddress}
+            onChange={e => setInputAddress(e.target.value)}
+            onKeyDown={handleInputKeyDown}
+            style={{ padding: 8, borderRadius: 4, border: '1px solid #ccc', minWidth: 320 }}
+          />
+          <button
+            onClick={handleSearch}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '0.5rem',
+              border: 'none',
+              background: '#3b82f6',
+              color: 'white',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)'
+            }}
+          >
+            Search
+          </button>
         </div>
-      </RainbowKitProvider>
-    </QueryClientProvider>
+      </header>
+      <div style={{ marginTop: 24, minHeight: 32 }}>
+        <DefiPositions
+          positions={positions}
+          loading={loading}
+          error={error}
+          searchedAddress={searchedAddress}
+        />
+      </div>
+    </div>
   );
 }
 
