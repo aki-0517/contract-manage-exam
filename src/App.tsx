@@ -80,23 +80,32 @@ function App() {
       };
 
       try {
-        const results = await Promise.all(
-          PROTOCOLS.map(async (protocol) => {
-            const url = `https://deep-index.moralis.io/api/v2.2/wallets/${searchedAddress}/defi/${protocol.id}/positions?chain=${getNetworkName(mainnet.id)}`;
-            const res = await fetch(url, {
-              headers: {
-                'accept': 'application/json',
-                'X-API-Key': apiKey,
-              },
-            });
-            if (!res.ok) {
-              return null;
-            }
-            const data = await res.json();
-            return data;
+        const networks = [mainnet.id, base.id];
+        const allResults = await Promise.all(
+          networks.map(async (networkId) => {
+            const chain = getNetworkName(networkId);
+            const networkResults = await Promise.all(
+              PROTOCOLS.map(async (protocol) => {
+                const url = `https://deep-index.moralis.io/api/v2.2/wallets/${searchedAddress}/defi/${protocol.id}/positions?chain=${chain}`;
+                const res = await fetch(url, {
+                  headers: {
+                    'accept': 'application/json',
+                    'X-API-Key': apiKey,
+                  },
+                });
+                if (!res.ok) {
+                  return null;
+                }
+                const data = await res.json();
+                return { ...data, chain };
+              })
+            );
+            return networkResults.filter(Boolean);
           })
         );
-        setPositions(results.filter(Boolean));
+
+        const mergedResults = allResults.flat();
+        setPositions(mergedResults);
       } catch (e: any) {
         setError("An error occurred while fetching data.");
       } finally {

@@ -1,10 +1,24 @@
 import { usePrivy } from '@privy-io/react-auth';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const WalletConnectButton = () => {
   const { login, logout, authenticated, user, createWallet } = usePrivy();
   const [showDetails, setShowDetails] = useState(false);
   const [copyStatus, setCopyStatus] = useState<{ [key: string]: string }>({});
+  const detailsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (detailsRef.current && !detailsRef.current.contains(event.target as Node)) {
+        setShowDetails(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   if (!authenticated) {
     return (
@@ -64,7 +78,7 @@ const WalletConnectButton = () => {
   };
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative' }} ref={detailsRef}>
       <button
         onClick={() => setShowDetails(!showDetails)}
         type="button"
