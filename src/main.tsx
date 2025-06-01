@@ -4,14 +4,14 @@ import './index.css'
 import App from './App.tsx'
 import { getDefaultConfig, RainbowKitProvider } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
-import { sepolia } from 'wagmi/chains';
+import { sepolia, mainnet, base, baseSepolia } from 'wagmi/chains';
 import '@rainbow-me/rainbowkit/styles.css';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const config = getDefaultConfig({
   appName: 'Morpho Manage',
   projectId: 'morpho-manage',
-  chains: [sepolia],
+  chains: [mainnet, sepolia, base, baseSepolia],
   ssr: false,
 });
 
