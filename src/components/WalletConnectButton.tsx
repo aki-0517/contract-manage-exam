@@ -7,7 +7,6 @@ const WalletConnectButton = () => {
         account,
         chain,
         openAccountModal,
-        openChainModal,
         openConnectModal,
         mounted,
       }) => {
