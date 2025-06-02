@@ -28,6 +28,8 @@ function App() {
   const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'my-wallet' | 'portfolio'>('my-wallet');
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   useEffect(() => {
     if (user?.wallet?.address) {
@@ -118,46 +120,166 @@ function App() {
   }, [searchedAddress, ready]);
 
   return (
-    <div className="app-container" style={{ maxWidth: 600, margin: '0 auto', padding: 24, position: 'relative' }}>
-      <div style={{ position: 'absolute', top: 24, right: 24 }}>
-        <WalletConnectButton />
-      </div>
-      <header style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24 }}>Defi Manage</h1>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 16 }}>
-          <input
-            type="text"
-            placeholder="Input wallet address"
-            value={inputAddress}
-            onChange={e => setInputAddress(e.target.value)}
-            onKeyDown={handleInputKeyDown}
-            style={{ padding: 8, borderRadius: 4, border: '1px solid #ccc', minWidth: 320 }}
-          />
-          <button
-            onClick={handleSearch}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '0.5rem',
-              border: 'none',
-              background: '#3b82f6',
-              color: 'white',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)'
-            }}
-          >
-            Search
-          </button>
+    <div style={{ 
+      minHeight: '100vh',
+      background: '#f9fafb'
+    }}>
+      {/* ヘッダー */}
+      <header style={{ 
+        background: 'white',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100
+      }}>
+        <div style={{ 
+          maxWidth: '1440px',
+          margin: '0 auto',
+          padding: '16px 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '32px'
+        }}>
+          <h1 style={{ 
+            fontSize: '24px',
+            margin: 0,
+            fontWeight: 600,
+            color: '#111827',
+            flex: '0 0 auto'
+          }}>
+            Defi Manage
+          </h1>
+          <div style={{ flex: 1 }} />
+          <div style={{ flex: '0 0 auto' }}>
+            <WalletConnectButton />
+          </div>
         </div>
       </header>
-      <div style={{ marginTop: 24, minHeight: 32 }}>
-        <DefiPositions
-          positions={positions}
-          loading={loading}
-          error={error}
-          searchedAddress={searchedAddress}
-        />
-      </div>
+
+      {/* メインコンテンツ */}
+      <main style={{ 
+        maxWidth: '1440px',
+        margin: '0 auto',
+        padding: '24px'
+      }}>
+        {/* タブ */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '16px', 
+          marginBottom: '32px',
+          borderBottom: '1px solid #e5e7eb',
+          paddingBottom: '16px'
+        }}>
+          <button
+            onClick={() => setActiveTab('my-wallet')}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '0.5rem',
+              border: 'none',
+              background: activeTab === 'my-wallet' ? '#3b82f6' : '#f3f4f6',
+              color: activeTab === 'my-wallet' ? 'white' : '#374151',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              fontWeight: 500,
+              fontSize: '16px'
+            }}
+          >
+            My Wallet
+          </button>
+          <button
+            onClick={() => setActiveTab('portfolio')}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '0.5rem',
+              border: 'none',
+              background: activeTab === 'portfolio' ? '#3b82f6' : '#f3f4f6',
+              color: activeTab === 'portfolio' ? 'white' : '#374151',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              fontWeight: 500,
+              fontSize: '16px'
+            }}
+          >
+            Portfolio
+          </button>
+        </div>
+
+        {/* コンテンツ */}
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        }}>
+          {activeTab === 'my-wallet' ? (
+            <div>
+              {user?.wallet?.address && (
+                <DefiPositions
+                  positions={positions}
+                  loading={loading}
+                  error={error}
+                  searchedAddress={user.wallet.address}
+                />
+              )}
+            </div>
+          ) : (
+            <div>
+              <div style={{ 
+                display: 'flex', 
+                gap: '16px', 
+                alignItems: 'center', 
+                marginBottom: '24px',
+                maxWidth: '800px'
+              }}>
+                <input
+                  type="text"
+                  placeholder="Input wallet address"
+                  value={inputAddress}
+                  onChange={e => setInputAddress(e.target.value)}
+                  onKeyDown={handleInputKeyDown}
+                  onFocus={() => setIsInputFocused(true)}
+                  onBlur={() => setIsInputFocused(false)}
+                  style={{ 
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: `1px solid ${isInputFocused ? '#3b82f6' : '#e5e7eb'}`,
+                    flex: 1,
+                    fontSize: '16px',
+                    outline: 'none',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isInputFocused ? '0 0 0 2px rgba(59, 130, 246, 0.1)' : 'none'
+                  }}
+                />
+                <button
+                  onClick={handleSearch}
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: '#3b82f6',
+                    color: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
+                    fontWeight: 500,
+                    fontSize: '16px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Search
+                </button>
+              </div>
+              <DefiPositions
+                positions={positions}
+                loading={loading}
+                error={error}
+                searchedAddress={searchedAddress}
+              />
+            </div>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
