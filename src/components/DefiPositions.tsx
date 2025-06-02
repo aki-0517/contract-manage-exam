@@ -47,6 +47,7 @@ interface DefiPositionsProps {
 const chainLabels: Record<string, string> = {
   eth: 'Ethereum',
   base: 'Base',
+  solana: 'Solana',
 };
 
 const DefiPositions: React.FC<DefiPositionsProps> = ({ positions, loading, error, searchedAddress }) => {
@@ -62,13 +63,7 @@ const DefiPositions: React.FC<DefiPositionsProps> = ({ positions, loading, error
     protocolMap[protocol.protocol_id].push(protocol);
   });
 
-  const activeProtocols = Object.values(protocolMap).filter(protocolsByChain =>
-    protocolsByChain.some(p => p.positions && p.positions.length > 0 && p.total_usd_value > 0)
-  );
-
-  if (activeProtocols.length === 0) {
-    return <span style={{ color: '#888' }}>No active DeFi positions found</span>;
-  }
+  const activeProtocols = Object.values(protocolMap);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>

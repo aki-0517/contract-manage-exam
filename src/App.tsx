@@ -21,6 +21,27 @@ const PROTOCOLS = [
   { id: "eigenlayer", name: "EigenLayer" },
 ];
 
+const SOLANA_PROTOCOLS = [
+  { id: "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8", name: "Raydium v4" },
+  { id: "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK", name: "Raydium CLMM" },
+  { id: "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C", name: "Raydium CPMM" },
+  { id: "Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB", name: "Meteora Dynamic AMM" },
+  { id: "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo", name: "Meteora DLMM" },
+  { id: "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc", name: "Orca/Whirlpool" },
+  { id: "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P", name: "PumpFun" },
+  { id: "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA", name: "PumpSwap" },
+  { id: "LanMV9sAd7wArD4vJFi2qDdfnVhFxYSUg6eADduJ3uj", name: "LaunchLab" },
+];
+
+// Solanaアドレス判定関数
+function isSolanaAddress(address: string): boolean {
+  // 0xで始まらず、32〜44文字、英数字のみ
+  return (
+    /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address) &&
+    !address.startsWith('0x')
+  );
+}
+
 function App() {
   const [inputAddress, setInputAddress] = useState<string>("");
   const [searchedAddress, setSearchedAddress] = useState<string | null>(null);
@@ -84,7 +105,7 @@ function App() {
 
       try {
         const networks = [mainnet.id, base.id];
-        const allResults = await Promise.all(
+        const evmResults = await Promise.all(
           networks.map(async (networkId) => {
             const chain = getNetworkName(networkId);
             const networkResults = await Promise.all(
@@ -107,7 +128,65 @@ function App() {
           })
         );
 
-        const mergedResults = allResults.flat();
+        // Solanaアドレス取得
+        const solanaWallet = user?.linkedAccounts?.find(a =>
+          a.type === 'wallet' &&
+          a.chainType === 'solana'
+        ) as { address: string } | undefined;
+        const solanaAddress = solanaWallet?.address;
+
+        let solanaResults: any[] = [];
+        if (solanaAddress) {
+          // 1. 各DEXのペア情報を取得
+          const pairsResults = await Promise.all(
+            SOLANA_PROTOCOLS.map(async (protocol) => {
+              const url = `https://solana-gateway.moralis.io/token/mainnet/${protocol.id}/pairs`;
+              const res = await fetch(url, {
+                headers: {
+                  'accept': 'application/json',
+                  'X-API-Key': apiKey,
+                },
+              });
+              if (!res.ok) return null;
+              const data = await res.json();
+              return { protocol, pairs: data };
+            })
+          );
+
+          // 2. ウォレットのスワップ履歴を取得
+          const swapsUrl = `https://solana-gateway.moralis.io/account/mainnet/${solanaAddress}/swaps`;
+          const swapsRes = await fetch(swapsUrl, {
+            headers: {
+              'accept': 'application/json',
+              'X-API-Key': apiKey,
+            },
+          });
+          let swapsData = [];
+          if (swapsRes.ok) {
+            swapsData = await swapsRes.json();
+          }
+
+          // 3. ペア情報とスワップ履歴を組み合わせてポートフォリオ風に整形
+          solanaResults = pairsResults
+            .filter((x): x is { protocol: { id: string; name: string }; pairs: any } => x !== null)
+            .map(({ protocol, pairs }) => {
+              const pairAddresses = (pairs?.result || []).map((p: any) => p.pairAddress);
+              const relatedSwaps = (swapsData?.result || []).filter((swap: any) =>
+                pairAddresses.includes(swap.pairAddress)
+              );
+              return {
+                protocol_name: protocol.name,
+                protocol_id: protocol.id,
+                protocol_url: `https://solana-gateway.moralis.io/token/mainnet/${protocol.id}/pairs`,
+                total_swaps: relatedSwaps.length,
+                swaps: relatedSwaps,
+                pairs: pairs?.result || [],
+                chain: 'solana',
+              };
+            });
+        }
+
+        const mergedResults = [...evmResults.flat(), ...solanaResults];
         setMyWalletPositions(mergedResults);
       } catch (e: any) {
         setError("An error occurred while fetching data.");
@@ -148,32 +227,85 @@ function App() {
       };
 
       try {
-        const networks = [mainnet.id, base.id];
-        const allResults = await Promise.all(
-          networks.map(async (networkId) => {
-            const chain = getNetworkName(networkId);
-            const networkResults = await Promise.all(
-              PROTOCOLS.map(async (protocol) => {
-                const url = `https://deep-index.moralis.io/api/v2.2/wallets/${searchedAddress}/defi/${protocol.id}/positions?chain=${chain}`;
-                const res = await fetch(url, {
-                  headers: {
-                    'accept': 'application/json',
-                    'X-API-Key': apiKey,
-                  },
-                });
-                if (!res.ok) {
-                  return null;
-                }
-                const data = await res.json();
-                return { ...data, chain };
-              })
-            );
-            return networkResults.filter(Boolean);
-          })
-        );
+        let results: any[] = [];
+        if (isSolanaAddress(searchedAddress)) {
+          // Solanaアドレスの場合
+          // 1. 各DEXのペア情報を取得
+          const pairsResults = await Promise.all(
+            SOLANA_PROTOCOLS.map(async (protocol) => {
+              const url = `https://solana-gateway.moralis.io/token/mainnet/${protocol.id}/pairs`;
+              const res = await fetch(url, {
+                headers: {
+                  'accept': 'application/json',
+                  'X-API-Key': apiKey,
+                },
+              });
+              if (!res.ok) return null;
+              const data = await res.json();
+              return { protocol, pairs: data };
+            })
+          );
 
-        const mergedResults = allResults.flat();
-        setSearchedPositions(mergedResults);
+          // 2. ウォレットのスワップ履歴を取得
+          const swapsUrl = `https://solana-gateway.moralis.io/account/mainnet/${searchedAddress}/swaps`;
+          const swapsRes = await fetch(swapsUrl, {
+            headers: {
+              'accept': 'application/json',
+              'X-API-Key': apiKey,
+            },
+          });
+          let swapsData = [];
+          if (swapsRes.ok) {
+            swapsData = await swapsRes.json();
+          }
+
+          // 3. ペア情報とスワップ履歴を組み合わせてポートフォリオ風に整形
+          results = pairsResults
+            .filter((x): x is { protocol: { id: string; name: string }; pairs: any } => x !== null)
+            .map(({ protocol, pairs }) => {
+              const pairAddresses = (pairs?.result || []).map((p: any) => p.pairAddress);
+              const relatedSwaps = (swapsData?.result || []).filter((swap: any) =>
+                pairAddresses.includes(swap.pairAddress)
+              );
+              return {
+                protocol_name: protocol.name,
+                protocol_id: protocol.id,
+                protocol_url: `https://solana-gateway.moralis.io/token/mainnet/${protocol.id}/pairs`,
+                total_swaps: relatedSwaps.length,
+                swaps: relatedSwaps,
+                pairs: pairs?.result || [],
+                chain: 'solana',
+                positions: [],
+                total_usd_value: 0,
+              };
+            });
+        } else {
+          const networks = [mainnet.id, base.id];
+          const allResults = await Promise.all(
+            networks.map(async (networkId) => {
+              const chain = getNetworkName(networkId);
+              const networkResults = await Promise.all(
+                PROTOCOLS.map(async (protocol) => {
+                  const url = `https://deep-index.moralis.io/api/v2.2/wallets/${searchedAddress}/defi/${protocol.id}/positions?chain=${chain}`;
+                  const res = await fetch(url, {
+                    headers: {
+                      'accept': 'application/json',
+                      'X-API-Key': apiKey,
+                    },
+                  });
+                  if (!res.ok) {
+                    return null;
+                  }
+                  const data = await res.json();
+                  return { ...data, chain };
+                })
+              );
+              return networkResults.filter(Boolean);
+            })
+          );
+          results = allResults.flat();
+        }
+        setSearchedPositions(results.filter(Boolean));
       } catch (e: any) {
         setError("An error occurred while fetching data.");
       } finally {
