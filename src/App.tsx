@@ -25,7 +25,8 @@ function App() {
   const [inputAddress, setInputAddress] = useState<string>("");
   const [searchedAddress, setSearchedAddress] = useState<string | null>(null);
   const { ready, user } = usePrivy();
-  const [positions, setPositions] = useState<any[]>([]);
+  const [myWalletPositions, setMyWalletPositions] = useState<any[]>([]);
+  const [searchedPositions, setSearchedPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'my-wallet' | 'portfolio'>('my-wallet');
@@ -54,11 +55,76 @@ function App() {
   };
 
   useEffect(() => {
-    const fetchPositions = async () => {
+    const fetchMyWalletPositions = async () => {
+      if (!user?.wallet?.address || !ready) return;
+      setLoading(true);
+      setError(null);
+      setMyWalletPositions([]);
+      const apiKey = import.meta.env.VITE_MORALIS_API_KEY;
+      if (!apiKey) {
+        setError("Moralis API key is not set.");
+        setLoading(false);
+        return;
+      }
+
+      const getNetworkName = (chainId: number) => {
+        switch (chainId) {
+          case mainnet.id:
+            return 'eth';
+          case sepolia.id:
+            return 'sepolia';
+          case base.id:
+            return 'base';
+          case baseSepolia.id:
+            return 'base-sepolia';
+          default:
+            return 'eth';
+        }
+      };
+
+      try {
+        const networks = [mainnet.id, base.id];
+        const allResults = await Promise.all(
+          networks.map(async (networkId) => {
+            const chain = getNetworkName(networkId);
+            const networkResults = await Promise.all(
+              PROTOCOLS.map(async (protocol) => {
+                const url = `https://deep-index.moralis.io/api/v2.2/wallets/${user.wallet?.address}/defi/${protocol.id}/positions?chain=${chain}`;
+                const res = await fetch(url, {
+                  headers: {
+                    'accept': 'application/json',
+                    'X-API-Key': apiKey,
+                  },
+                });
+                if (!res.ok) {
+                  return null;
+                }
+                const data = await res.json();
+                return { ...data, chain };
+              })
+            );
+            return networkResults.filter(Boolean);
+          })
+        );
+
+        const mergedResults = allResults.flat();
+        setMyWalletPositions(mergedResults);
+      } catch (e: any) {
+        setError("An error occurred while fetching data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMyWalletPositions();
+  }, [user?.wallet?.address, ready]);
+
+  useEffect(() => {
+    const fetchSearchedPositions = async () => {
       if (!searchedAddress || !ready) return;
       setLoading(true);
       setError(null);
-      setPositions([]);
+      setSearchedPositions([]);
       const apiKey = import.meta.env.VITE_MORALIS_API_KEY;
       if (!apiKey) {
         setError("Moralis API key is not set.");
@@ -107,15 +173,16 @@ function App() {
         );
 
         const mergedResults = allResults.flat();
-        setPositions(mergedResults);
+        setSearchedPositions(mergedResults);
       } catch (e: any) {
         setError("An error occurred while fetching data.");
       } finally {
         setLoading(false);
       }
     };
+
     if (searchedAddress) {
-      fetchPositions();
+      fetchSearchedPositions();
     }
   }, [searchedAddress, ready]);
 
@@ -216,7 +283,7 @@ function App() {
             <div>
               {user?.wallet?.address && (
                 <DefiPositions
-                  positions={positions}
+                  positions={myWalletPositions}
                   loading={loading}
                   error={error}
                   searchedAddress={user.wallet.address}
@@ -271,7 +338,7 @@ function App() {
                 </button>
               </div>
               <DefiPositions
-                positions={positions}
+                positions={searchedPositions}
                 loading={loading}
                 error={error}
                 searchedAddress={searchedAddress}
