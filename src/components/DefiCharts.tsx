@@ -65,7 +65,7 @@ export const DefiCharts: React.FC<DefiChartsProps> = ({ positions }) => {
               outerRadius={100}
               label={({ name, percent }) => `${name} (${(percent * 100).toFixed(1)}%)`}
             >
-              {pieData.map((entry, index) => (
+              {pieData.map((_, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>

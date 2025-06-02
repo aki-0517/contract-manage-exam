@@ -39,7 +39,7 @@ export const PortfolioCharts: React.FC<PortfolioChartsProps> = ({
               outerRadius={100}
               label
             >
-              {portfolioData.map((entry, index) => (
+              {portfolioData.map((_, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
