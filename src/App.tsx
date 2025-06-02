@@ -4,6 +4,7 @@ import './App.css'
 import { usePrivy } from '@privy-io/react-auth';
 import DefiPositions from "./components/DefiPositions";
 import { mainnet, sepolia, base, baseSepolia } from 'viem/chains';
+import { DefiCharts } from './components/DefiCharts';
 
 const PROTOCOLS = [
   { id: "uniswap-v2", name: "Uniswap V2" },
@@ -414,12 +415,15 @@ function App() {
           {activeTab === 'my-wallet' ? (
             <div>
               {user?.wallet?.address && (
-                <DefiPositions
-                  positions={myWalletPositions}
-                  loading={loading}
-                  error={error}
-                  searchedAddress={user.wallet.address}
-                />
+                <>
+                  <DefiCharts positions={myWalletPositions} />
+                  <DefiPositions
+                    positions={myWalletPositions}
+                    loading={loading}
+                    error={error}
+                    searchedAddress={user.wallet.address}
+                  />
+                </>
               )}
             </div>
           ) : (
@@ -469,12 +473,17 @@ function App() {
                   Search
                 </button>
               </div>
-              <DefiPositions
-                positions={searchedPositions}
-                loading={loading}
-                error={error}
-                searchedAddress={searchedAddress}
-              />
+              {searchedAddress && (
+                <>
+                  <DefiCharts positions={searchedPositions} />
+                  <DefiPositions
+                    positions={searchedPositions}
+                    loading={loading}
+                    error={error}
+                    searchedAddress={searchedAddress}
+                  />
+                </>
+              )}
             </div>
           )}
         </div>
