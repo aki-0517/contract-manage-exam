@@ -25,18 +25,13 @@ const WalletConnectButton = () => {
       <button
         onClick={() => login()}
         type="button"
-        style={{
-          padding: '8px 16px',
-          borderRadius: '0.5rem',
-          border: 'none',
-          background: '#3b82f6',
-          color: 'white',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease',
-          boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)',
-          fontWeight: 500
-        }}
+        className="login-button"
       >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+          <path d="M10 17l-3 3 3 3" />
+          <path d="M17 21V10h-7" />
+        </svg>
         Login
       </button>
     );
